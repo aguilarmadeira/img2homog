@@ -22,6 +22,10 @@
   pre{background:var(--box);padding:12px;border-radius:8px;overflow-x:auto;font-size:.85rem}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .fail{color:var(--fail);font-weight:700}
   #out{display:none}
+  #progress{display:none;margin:10px 0}
+  #pbar{height:14px;background:var(--box);border:1px solid var(--muted);border-radius:7px;overflow:hidden}
+  #pfill{height:100%;width:0%;background:var(--accent);transition:width .25s ease}
+  #ptext{color:var(--muted);font-size:.9rem;margin-top:4px}
   .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
   canvas{image-rendering:pixelated;border:1px solid var(--muted);max-width:320px;width:100%;height:auto;background:#fff}
   footer{color:var(--muted);font-size:.85rem;margin-top:2em}
@@ -50,6 +54,7 @@ Python in your browser — the image never leaves your computer.
 </fieldset>
 
 <button id="run" disabled>Loading Python…</button>
+<div id="progress"><div id="pbar"><div id="pfill"></div></div><div id="ptext"></div></div>
 <p id="status">Preparing the in-browser Python environment (first visit: 10–20 s).</p>
 
 <section id="out">
@@ -70,19 +75,27 @@ Python in your browser — the image never leaves your computer.
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+async function prog(pct, label){ $('progress').style.display='block';
+  $('pfill').style.width = pct+'%'; $('ptext').textContent = label;
+  await new Promise(r=>setTimeout(r, 30)); }
 let pyodide = null, fileBytes = null, fileName = null, lastTxt = null, lastN = null;
 
 async function init(){
   try{
+    await prog(5, 'Loading Python engine…');
     pyodide = await loadPyodide();
+    await prog(30, 'Loading numpy, scipy, Pillow…');
     $('status').textContent = 'Loading numpy, scipy, Pillow…';
     await pyodide.loadPackage(['numpy','scipy','Pillow']);
+    await prog(90, 'Fetching img2homog.py from the repository…');
     $('status').textContent = 'Fetching img2homog.py from the repository…';
     const r = await fetch('https://raw.githubusercontent.com/aguilarmadeira/img2homog/main/img2homog.py', {cache:'no-cache'});
     if(!r.ok) throw new Error('could not fetch img2homog.py ('+r.status+')');
     pyodide.FS.writeFile('/img2homog.py', await r.text());
     pyodide.runPython('import sys; sys.path.insert(0, "/")');
     $('run').textContent = 'Convert'; updateRun();
+    await prog(100, 'Ready.');
+    setTimeout(()=>{ $('progress').style.display='none'; }, 600);
     $('status').textContent = 'Ready.';
   }catch(e){ $('status').innerHTML = '<span class="fail">Failed to initialise: '+e+'</span>'; }
 }
@@ -111,13 +124,19 @@ $('run').addEventListener('click', async ()=>{
       path:'/input'+ext, N: +$('N').value, solid: $('solid').value,
       threshold: +$('threshold').value, rule: $('rule').value,
       minfrac: +$('minfrac').value, ref: $('ref').value===''? null : +$('ref').value }));
-    const res = pyodide.runPython(`
+    await prog(10, 'Reading and binarizing the image…');
+    pyodide.runPython(`
 import io, json, numpy as np
 import img2homog as m
 p = P.to_py() if hasattr(P, 'to_py') else dict(P)
 B, warn_jpeg, grey = m.load_binary(p['path'], p['solid'], p['threshold'])
-A = m.resample(B, int(p['N']), p['rule'], p['minfrac'])
-rep = m.checks(A)
+`);
+    await prog(35, 'Resampling to '+$('N').value+'\u00d7'+$('N').value+'…');
+    pyodide.runPython(`A = m.resample(B, int(p['N']), p['rule'], p['minfrac'])`);
+    await prog(70, 'Running validation checks…');
+    pyodide.runPython(`rep = m.checks(A)`);
+    await prog(90, 'Preparing the output file…');
+    const res = pyodide.runPython(`
 buf = io.StringIO(); np.savetxt(buf, A, fmt='%d')
 lines = []
 if warn_jpeg: lines.append(('warn','[WARN] JPEG input: compression noise near edges; prefer PNG.'))
@@ -153,7 +172,9 @@ json.dumps({'txt': buf.getvalue(), 'lines': lines, 'bits': A.ravel().tolist(), '
     for(let i=0;i<out.bits.length;i++){ const v = out.bits[i]? 0:255;
       img.data[4*i]=v; img.data[4*i+1]=v; img.data[4*i+2]=v; img.data[4*i+3]=255; }
     ctx.putImageData(img,0,0);
+    await prog(100, 'Done — the download is ready below.');
     $('out').style.display='block'; $('status').textContent='Done.';
+    setTimeout(()=>{ $('progress').style.display='none'; }, 1200);
   }catch(e){ $('status').innerHTML='<span class="fail">Error: '+e+'</span>'; }
   $('run').disabled = false;
 });
