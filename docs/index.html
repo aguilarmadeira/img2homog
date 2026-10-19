@@ -114,7 +114,7 @@ $('run').addEventListener('click', async ()=>{
     const res = pyodide.runPython(`
 import io, json, numpy as np
 import img2homog as m
-p = P.to_py()
+p = P.to_py() if hasattr(P, 'to_py') else dict(P)
 B, warn_jpeg, grey = m.load_binary(p['path'], p['solid'], p['threshold'])
 A = m.resample(B, int(p['N']), p['rule'], p['minfrac'])
 rep = m.checks(A)
