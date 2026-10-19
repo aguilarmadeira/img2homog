@@ -13,6 +13,16 @@ flipped chiral cell with the wrong handedness. `img2homog` performs the
 conversion **and prints a validation report** covering exactly these
 failure modes.
 
+
+## Web version (no installation)
+
+A browser version is available at
+**<https://aguilarmadeira.github.io/img2homog/>**: drop the image, set the
+options, read the validation report and download the `.txt` matrix. It runs
+the repository's own Python in your browser (via Pyodide), so results are
+identical to the command line and the image never leaves your computer.
+The first visit takes 10-20 s to load the Python environment.
+
 ## Usage
 
 ```bash
