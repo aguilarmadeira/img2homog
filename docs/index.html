@@ -55,6 +55,7 @@ Python in your browser — the image never leaves your computer.
   <label>solid <select id="solid"><option value="dark" selected>dark</option><option value="light">light</option></select></label>
   <label>threshold <input id="threshold" type="number" value="0.5" step="0.05" min="0" max="1"></label>
   <label>rule <select id="rule"><option value="area" selected>area</option><option value="center">center</option></select></label>
+  <label>rotate <select id="rotate"><option value="0" selected>0&deg;</option><option value="90">90&deg;</option></select></label>
   <label>min-frac <input id="minfrac" type="number" value="0.5" step="0.05" min="0" max="1"></label>
   <label>reference fraction <input id="ref" type="number" step="0.001" min="0" max="1" placeholder="optional"></label>
   <details class="help"><summary>What do these options mean?</summary>
@@ -73,6 +74,9 @@ Python in your browser — the image never leaves your computer.
       than N. <em>area</em>: solid if &ge;&thinsp;min-frac of the pixel's area is material (more
       faithful solid fraction &mdash; recommended). <em>center</em>: copies the source pixel at the
       centre point.</dd>
+    <dt>rotate</dt><dd>Rotates the image 90&deg; counterclockwise before processing, for
+      figures that come in sideways. It is a rotation, not a flip: chirality is preserved
+      (E<sub>1</sub>/E<sub>2</sub> and &nu;<sub>21</sub>/&nu;<sub>12</sub> swap axes accordingly).</dd>
     <dt>min-frac</dt><dd>The area-rule cutoff (default 0.5). Lower it (e.g. 0.3) to rescue a
       very thin wall that is vanishing in the resampling; raise it for the opposite. Change it
       only in response to a report warning.</dd>
@@ -104,7 +108,7 @@ Python in your browser — the image never leaves your computer.
   </div>
 </section>
 
-<footer>J. F. A. Madeira (IDMEC). MIT license. Computation is client-side (Pyodide); no data is uploaded anywhere.</footer>
+<footer>J. F. A. Madeira and J. M. Guedes (IDMEC). MIT license. Computation is client-side (Pyodide); no data is uploaded anywhere.</footer>
 </main>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -166,6 +170,7 @@ $('run').addEventListener('click', async ()=>{
     pyodide.globals.set('P', pyodide.toPy({
       path:'/input'+ext, N: +$('N').value, solid: $('solid').value,
       threshold: +$('threshold').value, rule: $('rule').value,
+      rotate: +$('rotate').value,
       minfrac: +$('minfrac').value, ref: $('ref').value===''? null : +$('ref').value }));
     await prog(10, 'Reading and binarizing the image…');
     pyodide.runPython(`
@@ -173,6 +178,8 @@ import io, json, numpy as np
 import img2homog as m
 p = P.to_py() if hasattr(P, 'to_py') else dict(P)
 B, warn_jpeg, grey = m.load_binary(p['path'], p['solid'], p['threshold'])
+if int(p['rotate']) == 90:
+    B = np.rot90(B)
 `);
     await prog(35, 'Resampling to '+$('N').value+'\u00d7'+$('N').value+'…');
     pyodide.runPython(`A = m.resample(B, int(p['N']), p['rule'], p['minfrac'])`);
@@ -209,7 +216,7 @@ json.dumps({'txt': buf.getvalue(), 'lines': lines, 'bits': A.ravel().tolist(), '
     const out = JSON.parse(res);
     lastTxt = out.txt; lastN = out.N; lastLines = out.lines;
     lastOpts = { N:+$('N').value, solid:$('solid').value, threshold:$('threshold').value,
-      rule:$('rule').value, minfrac:$('minfrac').value,
+      rule:$('rule').value, rotate:$('rotate').value+'\u00b0', minfrac:$('minfrac').value,
       ref: $('ref').value===''? '—' : $('ref').value };
     $('report').innerHTML = out.lines.map(([c,t]) =>
       '<span class="'+c+'">'+t.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>').join('\n');
@@ -246,6 +253,7 @@ $('dlpdf').addEventListener('click', ()=>{
     ['grid size N', String(lastOpts.N)+' \u00d7 '+String(lastOpts.N)],
     ['solid tone / threshold', lastOpts.solid+' / '+lastOpts.threshold],
     ['resampling rule / min-frac', lastOpts.rule+' / '+lastOpts.minfrac],
+    ['rotation', lastOpts.rotate],
     ['reference fraction', String(lastOpts.ref)]];
   for(const [k,v] of opts){ doc.setTextColor(110); doc.text(k, M, y);
     doc.setTextColor(0); doc.text(String(v), M+62, y); y += 5.5; }

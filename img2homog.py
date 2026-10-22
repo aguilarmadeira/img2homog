@@ -126,10 +126,15 @@ def main(argv=None):
                     help="area rule: solid-area fraction for pixel=1 (default 0.5)")
     ap.add_argument("--reference-fraction", type=float, default=None,
                     help="analytic solid fraction to compare against")
+    ap.add_argument("--rotate", type=int, choices=[0, 90], default=0,
+        help="rotate the image 90 degrees counterclockwise before "
+             "processing (a rotation, not a flip: chirality is preserved)")
     ap.add_argument("--preview", help="write a PNG preview of the bitmap")
     a = ap.parse_args(argv)
 
     B, warn_jpeg, grey = load_binary(a.image, a.solid, a.threshold)
+    if a.rotate == 90:
+        B = np.rot90(B)
     A = resample(B, a.N, a.rule, a.min_frac)
     out = a.output or f"{os.path.splitext(a.image)[0]}_{a.N}x{a.N}.txt"
     np.savetxt(out, A, fmt="%d")

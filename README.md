@@ -45,6 +45,7 @@ Output: an `N x N` matrix of space-separated 0/1 values (1 = solid,
 | `--threshold` | grey-level binarization threshold in [0,1] | `0.5` |
 | `--rule {area,center}` | pixel = 1 by solid-area fraction, or by pixel-centre membership | `area` |
 | `--min-frac` | area rule: solid fraction for pixel = 1 | `0.5` |
+| `--rotate {0,90}` | rotate the image 90° counterclockwise before processing (a rotation, not a flip: chirality is preserved; E1/E2 and nu21/nu12 swap axes accordingly) | `0` |
 | `--reference-fraction` | analytic solid fraction to compare against | — |
 | `--preview` | write a PNG preview of the bitmap | — |
 
@@ -106,6 +107,11 @@ Requires Python >= 3.9 with `numpy`, `scipy`, `pillow`
 J. M. Guedes, N. Kikuchi, *Preprocessing and postprocessing for materials
 based on the homogenization method with adaptive finite element methods*,
 Comput. Methods Appl. Mech. Engrg. 83 (1990) 143–198.
+
+## Authors
+
+J. F. A. Madeira and J. M. Guedes (IDMEC, Instituto Superior Técnico,
+Universidade de Lisboa / ISEL).
 
 ## License
 
